@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Personal Finance Cash Flow Planner</title>
+  <style>
+    /* Mountain background + frosted container theme */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: url("https://source.unsplash.com/ZHvM3XIOHoE/1600x900?mountains") no-repeat center center fixed;
+      background-size: cover;
+    }
+
+    /* A semi-opaque container so text is legible */
+    .container {
+      max-width: 950px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: rgba(255,255,255,0.88);
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      color: #333;
+    }
+
+    h1, h2, h3 {
+      text-align: center;
+      margin-top: 0.5em;
+      margin-bottom: 0.4em;
+    }
+
+    .section {
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      background-color: #fff;
+    }
+
+    .subtle {
+      font-size: 0.9em;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    button {
+      background: #007bff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #fff;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .delete-btn {
+      background: #dc3545;
+      margin-top: 5px;
+    }
+    .delete-btn:hover {
+      background: #c82333;
+    }
+
+    .row-horizontal {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .row-horizontal label {
+      font-weight: bold;
+    }
+
+    /* More spaced-out grid for the monthly incomes/expenses */
+    .item-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      background-color: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .row-block {
+      display: flex; 
+      flex-direction: column;
+    }
+    .row-block label {
+      margin-bottom: 2px;
+      font-weight: bold;
+    }
+    .row-block input,
+    .row-block select {
+      margin-bottom: 4px;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      width: auto;
+      color: #333;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: right;
+      color: #333;
+    }
+    th {
+      background: #eee;
+      font-weight: bold;
+    }
+    tr:hover {
+      background: #f1f1f1;
+    }
+    td:first-child, th:first-child {
+      text-align: left;
+    }
+
+    /* The slider style */
+    #varianceSlider {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Personal Finance Cash Flow Planner</h1>
+
+  <!-- 1. FORECAST TIME PERIOD -->
+  <div class="section">
+    <h2>1. Forecast Time Period</h2>
+    <p class="subtle">
+      Pick your forecast’s start & end months, plus whether you start/end at the start/middle/end of those months.
+    </p>
+    <div class="row-horizontal">
+      <label>Start Month:</label>
+      <input type="month" id="forecastStartMonth"/>
+      <label>Portion:</label>
+      <select id="forecastStartPortion">
+        <option value="start">Start</option>
+        <option value="middle">Middle</option>
+        <option value="end">End</option>
+      </select>
+    </div>
+    <div class="row-horizontal">
+      <label>End Month:</label>
+      <input type="month" id="forecastEndMonth"/>
+      <label>Portion:</label>
+      <select id="forecastEndPortion">
+        <option value="start">Start</option>
+        <option value="middle">Middle</option>
+        <option value="end" selected>End</option>
+      </select>
+      <button onclick="applyForecastRange()">Apply Forecast Range</button>
+    </div>
+    <p id="rangeInfo" class="subtle"></p>
+  </div>
+
+  <!-- 2. STARTING SAVINGS -->
+  <div class="section">
+    <h2>2. Enter Your Starting Savings</h2>
+    <div id="savingsList"></div>
+    <button onclick="addSavings()">+ Add Account</button>
+  </div>
+
+  <!-- 3. MONTHLY INCOME -->
+  <div class="section">
+    <h2>3. Monthly Income</h2>
+    <p class="subtle">
+      Examples: Job, side hustle, dividends.  
+      Check “entire forecast period” to continue through your forecast’s end.  
+      Check “start immediately” if you want to begin at the forecast start.  
+    </p>
+    <div id="incomeList"></div>
+    <button onclick="addIncome()">+ Add Income</button>
+  </div>
+
+  <!-- 4. MONTHLY EXPENSES -->
+  <div class="section">
+    <h2>4. Monthly Expenses</h2>
+    <p class="subtle">
+      Examples: Rent, utilities, groceries.  
+      Also “entire forecast period” or “start immediately.”
+    </p>
+    <div id="monthlyExpenseList"></div>
+    <button onclick="addMonthlyExpense()">+ Add Monthly Expense</button>
+  </div>
+
+  <!-- 5. ONE-TIME EXPENSES -->
+  <div class="section">
+    <h2>5. One-Time Expenses</h2>
+    <p class="subtle">
+      Single payments in a given month, e.g. a big purchase.  
+      Pick the month and portion (start/middle/end).
+    </p>
+    <div id="oneTimeExpenseList"></div>
+    <button onclick="addOneTimeExpense()">+ Add One-Time Expense</button>
+  </div>
+
+  <!-- 6. SURPLUS DESTINATION -->
+  <div class="section">
+    <h2>6. Surplus Destination</h2>
+    <p class="subtle">
+      Where should monthly net surplus go?
+    </p>
+    <div class="row-horizontal">
+      <label>Surplus Account:</label>
+      <select id="surplusAccount"></select>
+    </div>
+  </div>
+
+  <!-- 7. TAXES -->
+  <div class="section">
+    <h2>7. Estimated Federal Tax Rate</h2>
+    <p class="subtle">
+      We’ll estimate a bracket from your total forecasted income,  
+      or you can override with your own rate (%).
+    </p>
+    <div class="row-horizontal">
+      <label>Override Rate?</label>
+      <input type="checkbox" id="taxOverride" onclick="toggleTaxOverride()"/>
+      <label>Tax Rate (%):</label>
+      <input type="number" id="manualTaxRate" value="15" min="0" max="50" step="1" style="width:60px;" disabled />
+    </div>
+  </div>
+
+  <!-- 8. CALCULATE & RESULTS -->
+  <div class="section">
+    <h2>8. Calculate Projection</h2>
+    <button onclick="calculateBaseScenario()">Calculate Base Forecast</button>
+    <div id="baseResults"></div>
+    <div class="row-horizontal" style="margin-top:10px;">
+      <label><strong>Variance Slider:</strong></label>
+      <input type="range" id="varianceSlider" min="-50" max="50" step="5" value="0" oninput="updateVarianceLabelAndScenario()" />
+      <span id="varianceLabel">0%</span>
+    </div>
+    <div id="varianceResults"></div>
+  </div>
+</div>
+
+<script>
+/******************************************************************************
+ *  GLOBALS / DATA
+ ******************************************************************************/
+let forecastMonths = [];
+let savingsData = []; 
+let incomeData = [];
+let monthlyExpenseData = [];
+let oneTimeExpenseData = [];
+
+let baseScenario = null; // store once calculated
+
+// We’ll store the user’s forecast start/end as strings, so we can set min/max on the month inputs.
+let forecastStartStr = null;
+let forecastEndStr   = null;
+
+/******************************************************************************
+ *  UTILITY FUNCTIONS
+ ******************************************************************************/
+function parseYM(value) {
+  if(!value) return null;
+  let [y,m] = value.split("-").map(Number);
+  return y*12 + (m -1);
+}
+function labelYM(ymNum) {
+  if(ymNum===null) return "";
+  const moNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let y = Math.floor(ymNum/12);
+  let m = (ymNum%12)+1;
+  return moNames[m-1] + " " + y;
+}
+function portionFrac(portion) {
+  if(portion==="start") return 1.0;
+  if(portion==="middle") return 0.5;
+  if(portion==="end") return 0.0;
+  return 1.0;
+}
+function estimateTaxRate(annualInc){
+  if(annualInc<10000)return 0.10;
+  if(annualInc<44000)return 0.12;
+  if(annualInc<95000)return 0.22;
+  if(annualInc<182000)return 0.24;
+  return 0.32;
+}
+function fmt(n){
+  let x=Math.round(n);
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
+}
+
+/******************************************************************************
+ * 1. APPLY FORECAST RANGE
+ ******************************************************************************/
+function applyForecastRange() {
+  const sVal = document.getElementById("forecastStartMonth").value;
+  const eVal = document.getElementById("forecastEndMonth").value;
+  if(!sVal || !eVal){
+    alert("Please pick a start and end month for the forecast!");
+    return;
+  }
+  forecastStartStr = sVal;
+  forecastEndStr   = eVal;
+
+  const sNum = parseYM(sVal);
+  const eNum = parseYM(eVal);
+  if(eNum< sNum){
+    alert("End month is before start month!");
+    return;
+  }
+  const sPort = document.getElementById("forecastStartPortion").value;
+  const ePort = document.getElementById("forecastEndPortion").value;
+
+  // build array
+  forecastMonths = [];
+  for(let n=sNum; n<= eNum; n++){
+    forecastMonths.push({ ymNum:n, label: labelYM(n), fraction:1.0 });
+  }
+  if(forecastMonths.length===1){
+    let ff = portionFrac(sPort)+ portionFrac(ePort);
+    if(ff>1) ff=1;
+    forecastMonths[0].fraction= ff;
+  } else {
+    forecastMonths[0].fraction= portionFrac(sPort);
+    forecastMonths[forecastMonths.length-1].fraction= portionFrac(ePort);
+  }
+
+  // show info
+  document.getElementById("rangeInfo").textContent=
+    `Forecast covers ${forecastMonths.length} month(s): ${forecastMonths[0].label} to ${forecastMonths[forecastMonths.length-1].label}.`;
+
+  // Now that we have forecastStartStr & forecastEndStr, we can set min/max on newly created <input type="month">
+  // We'll do that in the functions that create new rows.
+}
+
+/******************************************************************************
+ * 2. STARTING SAVINGS
+ ******************************************************************************/
+function addSavings(){
+  const idx = savingsData.length;
+  savingsData.push({ accountName:"", amount:0 });
+  const container = document.getElementById("savingsList");
+  const div = document.createElement("div");
+  div.className= "row-horizontal";
+  div.id= "savingsRow_"+idx;
+  div.innerHTML=`
+    <label>Account Name:</label>
+    <input type="text" oninput="savingsData[${idx}].accountName=this.value; refreshSurplusDropdown();"/>
+    <label>Amount:</label>
+    <input type="number" oninput="savingsData[${idx}].amount=parseFloat(this.value)||0"/>
+    <button class="delete-btn" onclick="removeSavings(${idx})">Delete</button>
+  `;
+  container.appendChild(div);
+  refreshSurplusDropdown();
+}
+function removeSavings(idx){
+  savingsData[idx]=null;
+  const el= document.getElementById("savingsRow_"+idx);
+  if(el) el.remove();
+  refreshSurplusDropdown();
+}
+function refreshSurplusDropdown(){
+  const ddl= document.getElementById("surplusAccount");
+  const oldVal= ddl.value;
+  ddl.innerHTML="";
+  savingsData.forEach((s,i)=>{
+    if(!s) return;
+    let opt= document.createElement("option");
+    opt.value= i;
+    opt.text= s.accountName || ("Account #"+(i+1));
+    ddl.appendChild(opt);
+  });
+  ddl.value= oldVal;
+}
+
+/******************************************************************************
+ * 3. MONTHLY INCOME
+ ******************************************************************************/
+function addIncome(){
+  const idx= incomeData.length;
+  incomeData.push({
+    name:"",
+    monthlyAmt:0,
+    startYM:null,
+    startPortion:"start",
+    endYM:null,
+    endPortion:"end",
+    entireForecast:false,
+    startImmediately:false
+  });
+  const container= document.getElementById("incomeList");
+  const div= document.createElement("div");
+  div.className="item-row";
+  div.id="incomeRow_"+idx;
+  // We'll rename "indefinite?" => "entire forecast period" and
+  // rename "startAtForecastStart?" => "start immediately"
+  div.innerHTML=`
+    <div class="row-block">
+      <label>Name:</label>
+      <input type="text" oninput="incomeData[${idx}].name=this.value"/>
+    </div>
+
+    <div class="row-block">
+      <label>$/Month:</label>
+      <input type="number" step="0.01" oninput="incomeData[${idx}].monthlyAmt=parseFloat(this.value)||0"/>
+    </div>
+
+    <div class="row-block">
+      <label>Start Month:</label>
+      <input type="month" id="incStart_${idx}" onchange="incomeData[${idx}].startYM=parseYM(this.value)"/>
+      <label>Portion:</label>
+      <select id="incStartPortion_${idx}" onchange="incomeData[${idx}].startPortion=this.value">
+        <option value="start">Start</option>
+        <option value="middle">Middle</option>
+        <option value="end">End</option>
+      </select>
+      <div style="margin-top:4px;">
+        <label>Start Immediately?</label>
+        <input type="checkbox" onclick="toggleStartImmediately('income',${idx},this.checked)"/>
+      </div>
+    </div>
+
+    <div class="row-block">
+      <label>End Month:</label>
+      <input type="month" id="incEnd_${idx}" onchange="incomeData[${idx}].endYM=parseYM(this.value)"/>
+      <label>Portion:</label>
+      <select id="incEndPortion_${idx}" onchange="incomeData[${idx}].endPortion=this.value">
+        <option value="start">Start</option>
+        <option value="middle">Middle</option>
+        <option value="end" selected>End</option>
+      </select>
+      <div style="margin-top:4px;">
+        <label>Entire Forecast Period?</label>
+        <input type="checkbox" onclick="toggleEntireForecast('income',${idx},this.checked)"/>
+      </div>
+    </div>
+
+    <div>
+      <button class="delete-btn" onclick="removeIncome(${idx})">Delete</button>
+    </div>
+  `;
+  container.appendChild(div);
+
+  // if the user has set forecast bounds, apply min/max
+  if(forecastStartStr && forecastEndStr){
+    const incStart= document.getElementById("incStart_"+idx);
+    const incEnd  = document.getElementById("incEnd_"+idx);
+    incStart.min= forecastStartStr;
+    incStart.max= forecastEndStr;
+    incEnd.min  = forecastStartStr;
+    incEnd.max  = forecastEndStr;
+  }
+}
+function removeIncome(idx){
+  incomeData[idx]= null;
+  const el= document.getElementById("incomeRow_"+idx);
+  if(el) el.remove();
+}
+function toggleEntireForecast(type, idx, val){
+  if(type==="income"){
+    incomeData[idx].entireForecast=val;
+    const endM= document.getElementById("incEnd_"+idx);
+    const endP= document.getElementById("incEndPortion_"+idx);
+    if(val){
+      endM.disabled= true;
+      endP.disabled= true;
+    } else {
+      endM.disabled= false;
+      endP.disabled= false;
+    }
+  } else {
+    monthlyExpenseData[idx].entireForecast= val;
+    const endM= document.getElementById("expEnd_"+idx);
+    const endP= document.getElementById("expEndPortion_"+idx);
+    if(val){
+      endM.disabled= true;
+      endP.disabled= true;
+    } else {
+      endM.disabled= false;
+      endP.disabled= false;
+    }
+  }
+}
+function toggleStartImmediately(type, idx, val){
+  if(type==="income"){
+    incomeData[idx].startImmediately= val;
+    const sM= document.getElementById("incStart_"+idx);
+    const sP= document.getElementById("incStartPortion_"+idx);
+    if(val){
+      sM.disabled= true;
+      sP.disabled= true;
+      incomeData[idx].startYM= null;
+    } else {
+      sM.disabled= false;
+      sP.disabled= false;
+    }
+  } else {
+    monthlyExpenseData[idx].startImmediately= val;
+    const sM= document.getElementById("expStart_"+idx);
+    const sP= document.getElementById("expStartPortion_"+idx);
+    if(val){
+      sM.disabled= true;
+      sP.disabled= true;
+      monthlyExpenseData[idx].startYM= null;
+    } else {
+      sM.disabled= false;
+      sP.disabled= false;
+    }
+  }
+}
+
+/******************************************************************************
+ * 4. MONTHLY EXPENSES
+ ******************************************************************************/
+function addMonthlyExpense(){
+  const idx= monthlyExpenseData.length;
+  monthlyExpenseData.push({
+    name:"",
+    monthlyAmt:0,
+    startYM:null,
+    startPortion:"start",
+    endYM:null,
+    endPortion:"end",
+    entireForecast:false,
+    startImmediately:false
+  });
+  const container= document.getElementById("monthlyExpenseList");
+  const div= document.createElement("div");
+  div.className="item-row";
+  div.id="monthlyExpRow_"+idx;
+  div.innerHTML=`
+    <div class="row-block">
+      <label>Name:</label>
+      <input type="text" oninput="monthlyExpenseData[${idx}].name=this.value"/>
+    </div>
+
+    <div class="row-block">
+      <label>$/Month:</label>
+      <input type="number" step="0.01" oninput="monthlyExpenseData[${idx}].monthlyAmt=parseFloat(this.value)||0"/>
+    </div>
+
+    <div class="row-block">
+      <label>Start Month:</label>
+      <input type="month" id="expStart_${idx}" onchange="monthlyExpenseData[${idx}].startYM=parseYM(this.value)"/>
+      <label>Portion:</label>
+      <select id="expStartPortion_${idx}" onchange="monthlyExpenseData[${idx}].startPortion=this.value">
+        <option value="start">Start</option>
+        <option value="middle">Middle</option>
+        <option value="end">End</option>
+      </select>
+      <div style="margin-top:4px;">
+        <label>Start Immediately?</label>
+        <input type="checkbox" onclick="toggleStartImmediately('expense',${idx},this.checked)"/>
+      </div>
+    </div>
+
+    <div class="row-block">
+      <label>End Month:</label>
+      <input type="month" id="expEnd_${idx}" onchange="monthlyExpenseData[${idx}].endYM=parseYM(this.value)"/>
+      <label>Portion:</label>
+      <select id="expEndPortion_${idx}" onchange="monthlyExpenseData[${idx}].endPortion=this.value">
+        <option value="start">Start</option>
+        <option value="middle">Middle</option>
+        <option value="end" selected>End</option>
+      </select>
+      <div style="margin-top:4px;">
+        <label>Entire Forecast Period?</label>
+        <input type="checkbox" onclick="toggleEntireForecast('expense',${idx},this.checked)"/>
+      </div>
+    </div>
+
+    <div>
+      <button class="delete-btn" onclick="removeMonthlyExpense(${idx})">Delete</button>
+    </div>
+  `;
+  container.appendChild(div);
+
+  // set min/max if forecast set
+  if(forecastStartStr && forecastEndStr){
+    const expStart= document.getElementById("expStart_"+idx);
+    const expEnd  = document.getElementById("expEnd_"+idx);
+    expStart.min= forecastStartStr;
+    expStart.max= forecastEndStr;
+    expEnd.min  = forecastStartStr;
+    expEnd.max  = forecastEndStr;
+  }
+}
+function removeMonthlyExpense(idx){
+  monthlyExpenseData[idx]= null;
+  const el= document.getElementById("monthlyExpRow_"+idx);
+  if(el) el.remove();
+}
+
+/******************************************************************************
+ * 5. ONE-TIME EXPENSES
+ ******************************************************************************/
+function addOneTimeExpense(){
+  const idx= oneTimeExpenseData.length;
+  oneTimeExpenseData.push({name:"", cost:0, monthYM:null, portion:"start"});
+  const container= document.getElementById("oneTimeExpenseList");
+  const div= document.createElement("div");
+  div.className="row-horizontal";
+  div.id="oneTimeExpRow_"+idx;
+  div.innerHTML=`
+    <label>Name:</label>
+    <input type="text" oninput="oneTimeExpenseData[${idx}].name=this.value"/>
+    <label>Cost:</label>
+    <input type="number" step="0.01" oninput="oneTimeExpenseData[${idx}].cost=parseFloat(this.value)||0"/>
+    <label>Month:</label>
+    <input type="month" id="oneTimeMonth_${idx}" onchange="oneTimeExpenseData[${idx}].monthYM=parseYM(this.value)"/>
+    <label>Portion:</label>
+    <select onchange="oneTimeExpenseData[${idx}].portion=this.value">
+      <option value="start">Start</option>
+      <option value="middle">Middle</option>
+      <option value="end">End</option>
+    </select>
+    <button class="delete-btn" onclick="removeOneTimeExpense(${idx})">Delete</button>
+  `;
+  container.appendChild(div);
+
+  // set min/max if forecast set
+  if(forecastStartStr && forecastEndStr){
+    const moInput= document.getElementById("oneTimeMonth_"+idx);
+    moInput.min= forecastStartStr;
+    moInput.max= forecastEndStr;
+  }
+}
+function removeOneTimeExpense(idx){
+  oneTimeExpenseData[idx]= null;
+  const el= document.getElementById("oneTimeExpRow_"+idx);
+  if(el) el.remove();
+}
+
+/******************************************************************************
+ * 6. SURPLUS DESTINATION
+ ******************************************************************************/
+function refreshSurplusDropdown(){
+  const ddl= document.getElementById("surplusAccount");
+  const oldVal= ddl.value;
+  ddl.innerHTML="";
+  savingsData.forEach((s,i)=>{
+    if(!s) return;
+    let opt= document.createElement("option");
+    opt.value=i;
+    opt.text= s.accountName || ("Account #"+(i+1));
+    ddl.appendChild(opt);
+  });
+  ddl.value= oldVal;
+}
+
+/******************************************************************************
+ * 7. TAX OVERRIDE
+ ******************************************************************************/
+function toggleTaxOverride(){
+  const c= document.getElementById("taxOverride").checked;
+  document.getElementById("manualTaxRate").disabled= !c;
+}
+
+/******************************************************************************
+ * 8. CALCULATE
+ ******************************************************************************/
+function calculateBaseScenario(){
+  if(forecastMonths.length===0){
+    alert("Please apply your forecast range first!");
+    return;
+  }
+  baseScenario = computeScenario(1,1);
+  // Render base scenario
+  const baseDiv = document.getElementById("baseResults");
+  baseDiv.innerHTML = renderTable("Base Forecast", baseScenario);
+  // Also render variance scenario
+  updateVarianceLabelAndScenario();
+}
+
+function updateVarianceLabelAndScenario(){
+  const sliderVal = parseInt(document.getElementById("varianceSlider").value,10) || 0;
+  const lbl = sliderVal>0? `+${sliderVal}%` : `${sliderVal}%`;
+  document.getElementById("varianceLabel").textContent= lbl;
+
+  // If we haven't done a base scenario, do nothing
+  if(!baseScenario){
+    document.getElementById("varianceResults").innerHTML="<p>No base forecast yet.</p>";
+    return;
+  }
+
+  // compute scenario
+  let incMult=1, expMult=1;
+  if(sliderVal>0){
+    incMult= 1+(sliderVal/100);
+    expMult= 1-(sliderVal/100);
+  } else if(sliderVal<0){
+    const abs= Math.abs(sliderVal);
+    incMult= 1-(abs/100);
+    expMult= 1+(abs/100);
+  }
+  const scenario = computeScenario(incMult, expMult);
+  document.getElementById("varianceResults").innerHTML = renderTable(`Variance Forecast (${lbl})`, scenario);
+}
+
+function computeScenario(incomeMult, expenseMult){
+  // sum starting
+  let startBal=0;
+  savingsData.forEach(s=>{ if(s) startBal+=(s.amount||0); });
+
+  // total forecast income for tax bracket
+  let totalGross=0;
+  forecastMonths.forEach(mObj=>{
+    const fFrac= mObj.fraction;
+    // incomes
+    incomeData.forEach(inc=>{
+      if(!inc) return;
+      const sYM= inc.startImmediately? forecastMonths[0].ymNum : inc.startYM;
+      const eYM= inc.entireForecast? forecastMonths[forecastMonths.length-1].ymNum : inc.endYM;
+      if(sYM===null) return;
+      if(!eYM && !inc.entireForecast) return;
+      if(mObj.ymNum>=sYM && mObj.ymNum<=eYM){
+        let iFrac=1.0;
+        if(mObj.ymNum===sYM) iFrac= portionFrac(inc.startPortion);
+        if(!inc.entireForecast && mObj.ymNum=== eYM && sYM!== eYM){
+          iFrac*= portionFrac(inc.endPortion);
+          if(iFrac>1) iFrac=1;
+        }
+        if(sYM=== eYM && !inc.entireForecast){
+          iFrac= portionFrac(inc.startPortion)* portionFrac(inc.endPortion);
+          if(iFrac>1) iFrac=1;
+        }
+        totalGross += inc.monthlyAmt*incomeMult*iFrac*fFrac;
+      }
+    });
+  });
+  const ann = totalGross*(12/forecastMonths.length);
+  let tRate= estimateTaxRate(ann);
+  if(document.getElementById("taxOverride").checked){
+    tRate= (parseFloat(document.getElementById("manualTaxRate").value)||0)/100;
+  }
+
+  // month-by-month
+  let curBal= startBal;
+  let rows=[];
+  forecastMonths.forEach(mObj=>{
+    const fFrac= mObj.fraction;
+    let grossInc=0;
+    let expTotal=0;
+    // incomes
+    incomeData.forEach(inc=>{
+      if(!inc) return;
+      const sYM= inc.startImmediately? forecastMonths[0].ymNum : inc.startYM;
+      const eYM= inc.entireForecast? forecastMonths[forecastMonths.length-1].ymNum : inc.endYM;
+      if(sYM===null) return;
+      if(!eYM && !inc.entireForecast) return;
+      if(mObj.ymNum>= sYM && mObj.ymNum<= eYM){
+        let iFrac=1.0;
+        if(mObj.ymNum=== sYM) iFrac= portionFrac(inc.startPortion);
+        if(!inc.entireForecast && mObj.ymNum=== eYM && sYM!== eYM){
+          iFrac*= portionFrac(inc.endPortion);
+          if(iFrac>1) iFrac=1;
+        }
+        if(sYM=== eYM && !inc.entireForecast){
+          iFrac= portionFrac(inc.startPortion)* portionFrac(inc.endPortion);
+          if(iFrac>1) iFrac=1;
+        }
+        grossInc+= inc.monthlyAmt*incomeMult*iFrac*fFrac;
+      }
+    });
+    // monthly expenses
+    monthlyExpenseData.forEach(exp=>{
+      if(!exp) return;
+      const sYM= exp.startImmediately? forecastMonths[0].ymNum : exp.startYM;
+      const eYM= exp.entireForecast? forecastMonths[forecastMonths.length-1].ymNum : exp.endYM;
+      if(!sYM) return;
+      if(!eYM && !exp.entireForecast) return;
+      if(mObj.ymNum>= sYM && mObj.ymNum<= eYM){
+        let eFrac=1.0;
+        if(mObj.ymNum=== sYM) eFrac= portionFrac(exp.startPortion);
+        if(!exp.entireForecast && mObj.ymNum=== eYM && sYM!== eYM){
+          eFrac*= portionFrac(exp.endPortion);
+          if(eFrac>1) eFrac=1;
+        }
+        if(sYM=== eYM && !exp.entireForecast){
+          eFrac= portionFrac(exp.startPortion)* portionFrac(exp.endPortion);
+          if(eFrac>1) eFrac=1;
+        }
+        expTotal+= exp.monthlyAmt* expenseMult* eFrac* fFrac;
+      }
+    });
+    // one-time
+    oneTimeExpenseData.forEach(o=>{
+      if(!o) return;
+      if(mObj.ymNum=== o.monthYM){
+        let oFrac= portionFrac(o.portion)* fFrac;
+        if(oFrac>1)oFrac=1;
+        expTotal+= o.cost* expenseMult* oFrac;
+      }
+    });
+    // tax
+    let tax= grossInc* tRate;
+    let netInc= grossInc- tax;
+    let netFlow= netInc- expTotal;
+    let beginBal= curBal;
+    let endBal= beginBal+ netFlow;
+    curBal= endBal;
+    rows.push({
+      monthLabel: mObj.label,
+      beginBal,
+      grossInc,
+      tax,
+      netInc,
+      expenses: expTotal,
+      netFlow,
+      endBal
+    });
+  });
+  return { rows, startBal, finalBal:curBal, taxRate:tRate };
+}
+
+/******************************************************************************
+ * RENDERING TABLES
+ ******************************************************************************/
+function renderTable(title, scenario){
+  let html= `<h3>${title}</h3>`;
+  html+= `<table>
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Beginning Bal</th>
+        <th>Gross Inc</th>
+        <th>Tax</th>
+        <th>Net Inc</th>
+        <th>Expenses</th>
+        <th>Net Flow</th>
+        <th>Ending Bal</th>
+      </tr>
+    </thead>
+    <tbody>`;
+  scenario.rows.forEach(r=>{
+    let nf = r.netFlow>=0 ? fmt(r.netFlow) : "-"+fmt(Math.abs(r.netFlow));
+    html+= `
+      <tr>
+        <td style="text-align:left;">${r.monthLabel}</td>
+        <td>${fmt(r.beginBal)}</td>
+        <td>${fmt(r.grossInc)}</td>
+        <td>${r.tax>0 ? "-"+fmt(r.tax) : fmt(r.tax)}</td>
+        <td>${fmt(r.netInc)}</td>
+        <td>${r.expenses>0 ? "-"+fmt(r.expenses) : fmt(r.expenses)}</td>
+        <td>${nf}</td>
+        <td>${fmt(r.endBal)}</td>
+      </tr>
+    `;
+  });
+  html+=`</tbody></table>
+  <p><strong>Starting Balance:</strong> ${fmt(scenario.startBal)}</p>
+  <p><strong>Final Balance:</strong> ${fmt(scenario.finalBal)}</p>
+  <p><strong>Tax Rate Applied:</strong> ${(scenario.taxRate*100).toFixed(1)}%</p>
+  `;
+  return html;
+}
+</script>
+</body>
+</html>
